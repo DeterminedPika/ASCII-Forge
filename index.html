@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ASCII.FORGE</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gifuct-js/2.1.2/gifuct-js.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
@@ -11,46 +12,40 @@
   body{background:#080808;color:var(--g);font-family:'Share Tech Mono',monospace;min-height:100vh;padding:24px 16px;overflow-x:hidden}
   body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);pointer-events:none;z-index:999}
   body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.65) 100%);pointer-events:none;z-index:998}
-
   .wrap{max-width:880px;margin:0 auto;position:relative;z-index:1}
-
   header{text-align:center;margin-bottom:24px}
   h1{font-size:clamp(20px,5vw,30px);letter-spacing:.4em;text-transform:uppercase;text-shadow:0 0 18px var(--g),0 0 40px var(--g);color:var(--g);margin-bottom:4px}
   .sub{font-size:9px;letter-spacing:.35em;color:rgba(0,255,65,.35)}
-
   .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}
   .box{background:#0d0d0d;border:1px solid rgba(0,255,65,.12);border-radius:3px;padding:10px}
   .box-label{font-size:8px;letter-spacing:.3em;color:rgba(0,255,65,.4);margin-bottom:8px}
-
   select{background:#0a0a0a;color:var(--g);border:1px solid rgba(0,255,65,.25);padding:5px 8px;font-family:inherit;font-size:11px;letter-spacing:.08em;width:100%;cursor:pointer;outline:none}
   input[type=range]{width:100%;accent-color:var(--g);cursor:pointer;background:transparent}
-
   .chips{display:flex;flex-wrap:wrap;gap:6px}
   .chip{padding:4px 10px;border:1px solid rgba(0,255,65,.2);background:transparent;color:rgba(0,255,65,.5);font-family:inherit;font-size:10px;letter-spacing:.1em;cursor:pointer;border-radius:2px;transition:.15s}
   .chip.on{border-color:var(--g);background:rgba(0,255,65,.12);color:var(--g)}
-
   .dots{display:flex;gap:6px}
   .dot{width:22px;height:22px;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:.15s}
   .dot.on{outline:2px solid #fff}
-
   #upload-btn{width:100%;padding:26px;background:transparent;border:2px dashed rgba(0,255,65,.25);border-radius:4px;cursor:pointer;text-align:center;font-family:inherit;transition:.2s;margin-bottom:12px;display:block}
   #upload-btn:hover{background:rgba(0,255,65,.05);border-color:rgba(0,255,65,.5)}
   .upload-icon{font-size:26px;color:var(--g);display:block;margin-bottom:6px}
   .upload-main{font-size:11px;letter-spacing:.2em;color:rgba(0,255,65,.7)}
   .upload-hint{font-size:9px;letter-spacing:.1em;color:rgba(0,255,65,.35);margin-top:4px}
   #file-in{display:none}
-
+  #status{text-align:center;padding:14px;font-size:11px;letter-spacing:.3em;display:none;flex-direction:column;align-items:center;gap:8px}
+  .progress-bar{width:100%;max-width:300px;height:3px;background:rgba(0,255,65,.1);border-radius:2px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--g);width:0%;transition:width .15s;box-shadow:0 0 8px var(--g)}
   .pulse{animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  #status{text-align:center;padding:14px;font-size:11px;letter-spacing:.3em;display:none}
-
   #actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;display:none}
   .act{padding:6px 14px;background:transparent;color:var(--g);border:1px solid rgba(0,255,65,.4);font-family:inherit;font-size:10px;letter-spacing:.15em;cursor:pointer;transition:.15s}
   .act:hover{background:rgba(0,255,65,.1)}
   #frame-info{margin-left:auto;font-size:9px;letter-spacing:.15em;color:rgba(0,255,65,.4)}
-
   #canvas-wrap{background:#000;border:1px solid rgba(0,255,65,.12);border-radius:4px;overflow:auto;max-height:68vh;display:none;justify-content:center;align-items:flex-start}
   #out{display:block;max-width:100%}
+  .speed-row{display:flex;align-items:center;gap:6px}
+  .speed-label{font-size:9px;letter-spacing:.2em;color:rgba(0,255,65,.4);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -97,15 +92,19 @@
     <span class="upload-hint">PNG · JPG · WEBP · GIF · BMP</span>
   </button>
 
-  <div id="status"><span class="pulse">░░░ PROCESSING ░░░</span></div>
+  <div id="status">
+    <span class="pulse" id="status-text">░░░ PROCESSING ░░░</span>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </div>
 
   <div id="actions">
     <button class="act" onclick="copyText()">⎘ COPY TEXT</button>
     <button class="act" onclick="savePng()">↓ SAVE PNG</button>
     <button class="act" id="playbtn" onclick="togglePlay()" style="display:none">⏸ PAUSE</button>
-    <div style="display:flex;align-items:center;gap:6px;display:none" id="speed-wrap">
-      <span style="font-size:9px;letter-spacing:.2em;color:rgba(0,255,65,.4)">SPEED</span>
-      <input type="range" id="speed" min="40" max="500" value="100" style="width:70px;accent-color:var(--g)">
+    <div class="speed-row" id="speed-wrap" style="display:none">
+      <span class="speed-label">SPEED</span>
+      <input type="range" id="speed-mult" min="25" max="400" value="100" style="width:70px;accent-color:var(--g)" oninput="updateSpeed()">
+      <span class="speed-label" id="speed-val">1×</span>
     </div>
     <span id="frame-info"></span>
   </div>
@@ -114,50 +113,37 @@
 </div>
 
 <canvas id="src" style="display:none"></canvas>
+<canvas id="compose" style="display:none"></canvas>
 
 <script>
 const SETS={detailed:'@#S%?*+;:,. ',blocks:'█▓▒░ ',simple:'#@O+=-:. ',minimal:'#. '};
-const FS=7,CA=0.55;
+const FS=7, CA=0.55;
 const GLOWS=['#00ff41','#ff6b35','#00d4ff','#ff2d78','#ffffff'];
 
-let colored=false, glowColor='#00ff41', frames=[], frameIdx=0, timer=null, playing=true;
-let currentFile=null, currentIsGif=false;
+let colored=false, glowColor='#00ff41';
+let asciiFrames=[], frameDelays=[], frameIdx=0, timer=null, playing=true;
+let currentFile=null, currentIsGif=false, speedMult=1;
 
 // Build phosphor dots
-const dotsEl=document.getElementById('dots');
 GLOWS.forEach(c=>{
   const d=document.createElement('button');
   d.className='dot'+(c==='#00ff41'?' on':'');
-  d.style.background=c;
-  d.dataset.color=c;
+  d.style.background=c; d.dataset.color=c;
   d.onclick=()=>{
     glowColor=c;
     document.querySelectorAll('.dot').forEach(x=>x.classList.remove('on'));
     d.classList.add('on');
     document.documentElement.style.setProperty('--g',c);
-    if(frames[frameIdx]) renderFrame(frames[frameIdx]);
+    if(asciiFrames[frameIdx]) renderFrame(asciiFrames[frameIdx]);
   };
-  dotsEl.appendChild(d);
+  document.getElementById('dots').appendChild(d);
 });
 
 document.getElementById('res').oninput=function(){
   document.getElementById('res-label').textContent='RESOLUTION  ['+this.value+']';
   if(currentFile) convert();
 };
-
 document.getElementById('charset').onchange=()=>{ if(currentFile) convert(); };
-
-document.getElementById('speed').oninput=function(){
-  if(timer) { clearInterval(timer); startAnim(); }
-};
-
-document.getElementById('file-in').onchange=function(e){
-  const f=e.target.files[0]; if(!f) return;
-  document.getElementById('upload-label').textContent='📄 '+f.name;
-  currentFile=URL.createObjectURL(f);
-  currentIsGif=f.type==='image/gif';
-  convert();
-};
 
 function setColored(c){
   colored=c;
@@ -167,47 +153,134 @@ function setColored(c){
   if(currentFile) convert();
 }
 
-function convert(){
-  clearInterval(timer);
-  document.getElementById('status').style.display='block';
-  document.getElementById('actions').style.display='none';
-  document.getElementById('canvas-wrap').style.display='none';
-  frames=[]; frameIdx=0;
-
-  const res=+document.getElementById('res').value;
-  const cs=document.getElementById('charset').value;
-
-  const img=new Image();
-  img.onload=()=>{
-    if(!currentIsGif){
-      const rows=Math.round(res*(img.height/img.width)*CA);
-      const s=document.getElementById('src');
-      s.width=res; s.height=rows;
-      s.getContext('2d').drawImage(img,0,0,res,rows);
-      const data=s.getContext('2d').getImageData(0,0,res,rows).data;
-      frames=[toAscii(data,res,rows,cs)];
-      done();
-    } else {
-      const rows=Math.round(res*(img.naturalHeight/img.naturalWidth)*CA);
-      const s=document.getElementById('src');
-      s.width=res; s.height=rows;
-      const ctx=s.getContext('2d');
-      let last=null,count=0;
-      const iv=setInterval(()=>{
-        ctx.clearRect(0,0,res,rows);
-        ctx.drawImage(img,0,0,res,rows);
-        const data=ctx.getImageData(0,0,res,rows).data;
-        const key=Array.from(data.filter((_,i)=>i%40===0)).join();
-        if(key!==last){frames.push(toAscii(data,res,rows,cs));last=key;}
-        if(++count>=40){clearInterval(iv);done();}
-      },80);
-    }
-  };
-  img.src=currentFile;
+function updateSpeed(){
+  const v=+document.getElementById('speed-mult').value;
+  speedMult=v/100;
+  document.getElementById('speed-val').textContent=speedMult.toFixed(2).replace(/\.?0+$/,'')+'×';
+  if(timer){ clearInterval(timer); if(playing) startAnim(); }
 }
 
-function toAscii(data,w,h,cs){
-  const chars=SETS[cs];
+document.getElementById('file-in').onchange=function(e){
+  const f=e.target.files[0]; if(!f) return;
+  document.getElementById('upload-label').textContent='📄 '+f.name;
+  currentFile=f;
+  currentIsGif=f.type==='image/gif';
+  convert();
+};
+
+// ── Main conversion entry point ───────────────────────────────────────────────
+function convert(){
+  clearInterval(timer);
+  asciiFrames=[]; frameDelays=[]; frameIdx=0;
+  showStatus('░░░ LOADING ░░░');
+  document.getElementById('actions').style.display='none';
+  document.getElementById('canvas-wrap').style.display='none';
+
+  if(currentIsGif) convertGif(currentFile);
+  else convertStatic(currentFile);
+}
+
+// ── Static image ──────────────────────────────────────────────────────────────
+function convertStatic(file){
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{
+    const {cols,rows}=getDims(img.width,img.height);
+    const s=document.getElementById('src');
+    s.width=cols; s.height=rows;
+    s.getContext('2d').drawImage(img,0,0,cols,rows);
+    const data=s.getContext('2d').getImageData(0,0,cols,rows).data;
+    asciiFrames=[toAscii(data,cols,rows)];
+    frameDelays=[0];
+    URL.revokeObjectURL(url);
+    done();
+  };
+  img.src=url;
+}
+
+// ── GIF — proper frame-by-frame decoding ──────────────────────────────────────
+async function convertGif(file){
+  try{
+    const buffer=await file.arrayBuffer();
+    showStatus('░░░ DECODING GIF ░░░');
+
+    // gifuct-js exposes parseGIF and decompressFrames globally via CDN build
+    const gif=gifuct.parseGIF(buffer);
+    const rawFrames=gifuct.decompressFrames(gif,true);
+
+    const gifW=gif.lsd.width, gifH=gif.lsd.height;
+    const {cols,rows}=getDims(gifW,gifH);
+
+    // Compositing canvas (full gif size)
+    const comp=document.getElementById('compose');
+    comp.width=gifW; comp.height=gifH;
+    const compCtx=comp.getContext('2d');
+
+    // Scale-down canvas
+    const sc=document.getElementById('src');
+    sc.width=cols; sc.height=rows;
+    const scCtx=sc.getContext('2d');
+
+    const total=rawFrames.length;
+    let prevDisposal=0, savedImageData=null;
+
+    showStatus(`░░░ CONVERTING ${total} FRAMES ░░░`);
+
+    // Process in chunks so the UI can update progress
+    for(let i=0;i<total;i++){
+      const f=rawFrames[i];
+
+      // Apply previous frame disposal
+      if(prevDisposal===2){
+        compCtx.clearRect(0,0,gifW,gifH);
+      } else if(prevDisposal===3 && savedImageData){
+        compCtx.putImageData(savedImageData,0,0);
+      }
+
+      // Save state if needed for next disposal
+      if(f.disposalType===3){
+        savedImageData=compCtx.getImageData(0,0,gifW,gifH);
+      }
+
+      // Draw patch onto composite canvas
+      const patch=new ImageData(
+        new Uint8ClampedArray(f.patch),
+        f.dims.width,
+        f.dims.height
+      );
+      const tmp=document.createElement('canvas');
+      tmp.width=f.dims.width; tmp.height=f.dims.height;
+      tmp.getContext('2d').putImageData(patch,0,0);
+      compCtx.drawImage(tmp,f.dims.left,f.dims.top);
+
+      // Scale down and convert to ascii
+      scCtx.clearRect(0,0,cols,rows);
+      scCtx.drawImage(comp,0,0,cols,rows);
+      const data=scCtx.getImageData(0,0,cols,rows).data;
+      asciiFrames.push(toAscii(data,cols,rows));
+
+      // GIF delay is in centiseconds → ms, minimum 20ms
+      frameDelays.push(Math.max(20,(f.delay||5)*10));
+
+      prevDisposal=f.disposalType||0;
+
+      // Update progress bar every few frames
+      if(i%5===0 || i===total-1){
+        setProgress(Math.round((i+1)/total*100));
+        await sleep(0); // yield to browser
+      }
+    }
+    done();
+  } catch(err){
+    console.error(err);
+    showStatus('⚠ GIF DECODE ERROR — TRY ANOTHER FILE');
+    setTimeout(hideStatus,3000);
+  }
+}
+
+// ── ASCII conversion ──────────────────────────────────────────────────────────
+function toAscii(data,w,h){
+  const chars=SETS[document.getElementById('charset').value];
   const rows=[];
   for(let y=0;y<h;y++){
     const row=[];
@@ -223,6 +296,7 @@ function toAscii(data,w,h,cs){
   return rows;
 }
 
+// ── Canvas render ─────────────────────────────────────────────────────────────
 function renderFrame(rows){
   const out=document.getElementById('out');
   const cols=rows[0]?.length||0;
@@ -242,45 +316,64 @@ function renderFrame(rows){
   }
 }
 
-function done(){
-  document.getElementById('status').style.display='none';
-  document.getElementById('actions').style.display='flex';
-  document.getElementById('canvas-wrap').style.display='flex';
-  const isGif=frames.length>1;
-  document.getElementById('playbtn').style.display=isGif?'':'none';
-  document.getElementById('speed-wrap').style.display=isGif?'flex':'none';
-  frameIdx=0; renderFrame(frames[0]);
-  updateFrameInfo();
-  if(isGif){playing=true;document.getElementById('playbtn').textContent='⏸ PAUSE';startAnim();}
-}
-
-function startAnim(){
-  const delay=+document.getElementById('speed').value;
-  timer=setInterval(()=>{
-    frameIdx=(frameIdx+1)%frames.length;
-    renderFrame(frames[frameIdx]);
+// ── Animation ─────────────────────────────────────────────────────────────────
+function scheduleNext(){
+  if(!playing||asciiFrames.length<=1) return;
+  const delay=frameDelays[frameIdx]/speedMult;
+  timer=setTimeout(()=>{
+    frameIdx=(frameIdx+1)%asciiFrames.length;
+    renderFrame(asciiFrames[frameIdx]);
     updateFrameInfo();
+    scheduleNext();
   },delay);
 }
 
-function updateFrameInfo(){
-  const el=document.getElementById('frame-info');
-  el.textContent=frames.length>1?`FRAME ${frameIdx+1}/${frames.length}`:'';
-}
+function startAnim(){ clearTimeout(timer); scheduleNext(); }
 
 function togglePlay(){
   playing=!playing;
   document.getElementById('playbtn').textContent=playing?'⏸ PAUSE':'▶ PLAY';
-  if(playing) startAnim(); else clearInterval(timer);
+  if(playing) startAnim(); else clearTimeout(timer);
 }
 
+function updateFrameInfo(){
+  document.getElementById('frame-info').textContent=
+    asciiFrames.length>1?`FRAME ${frameIdx+1}/${asciiFrames.length}  ${frameDelays[frameIdx]}ms`:'';
+}
+
+// ── Finish up ─────────────────────────────────────────────────────────────────
+function done(){
+  hideStatus();
+  document.getElementById('actions').style.display='flex';
+  document.getElementById('canvas-wrap').style.display='flex';
+  const isGif=asciiFrames.length>1;
+  document.getElementById('playbtn').style.display=isGif?'':'none';
+  document.getElementById('speed-wrap').style.display=isGif?'flex':'none';
+  frameIdx=0; renderFrame(asciiFrames[0]);
+  updateFrameInfo();
+  if(isGif){playing=true;document.getElementById('playbtn').textContent='⏸ PAUSE';startAnim();}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getDims(w,h){
+  const cols=+document.getElementById('res').value;
+  return{cols,rows:Math.round(cols*(h/w)*CA)};
+}
+function showStatus(msg){
+  document.getElementById('status-text').textContent=msg;
+  document.getElementById('status').style.display='flex';
+  setProgress(0);
+}
+function hideStatus(){ document.getElementById('status').style.display='none'; }
+function setProgress(p){ document.getElementById('progress').style.width=p+'%'; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
 function copyText(){
-  const text=frames[frameIdx].map(r=>r.map(c=>c.c).join('')).join('\n');
+  const text=asciiFrames[frameIdx].map(r=>r.map(c=>c.c).join('')).join('\n');
   navigator.clipboard?.writeText(text);
   const b=document.querySelector('[onclick="copyText()"]');
   b.textContent='✓ COPIED'; setTimeout(()=>b.textContent='⎘ COPY TEXT',1800);
 }
-
 function savePng(){
   const a=document.createElement('a');
   a.download='ascii-art.png';
